@@ -62,8 +62,15 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}-msvc
 
+      - name: Stage artifact
+        shell: pwsh
+        run: |
+          $folder = if ("${{ matrix.preset }}" -eq "release") { "PluginRelease" } else { "PluginDebug" }
+          New-Item -ItemType Directory -Force artifact/SKSE/Plugins | Out-Null
+          Copy-Item "contrib/$folder/skse/plugins/*" artifact/SKSE/Plugins/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: TakeAllLockpicksVR-${{ matrix.preset }}
-          path: contrib/Plugin*/skse/plugins/
+          path: artifact/
