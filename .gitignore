@@ -1,0 +1,10 @@
+build
+*ReSharper*
+.vs
+.idea
+contrib/Plugin*
+.vscode/
+*.log
+.codegraph/
+.claude/
+version-*.csv

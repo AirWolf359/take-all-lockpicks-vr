@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # Keep in sync with the builtin-baseline / default-registry baseline in vcpkg.json
+  VCPKG_COMMIT_ID: c591ac6466a55ef0a05a3d56bb1489ca36e50102
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Get CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+
+      - name: Run CMake
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: build-release-msvc
+          buildPreset: release-msvc
+
+      - name: Package mod archive
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          New-Item -ItemType Directory -Force stage/SKSE/Plugins | Out-Null
+          Copy-Item contrib/PluginRelease/skse/plugins/TakeAllLockpicksVR.dll stage/SKSE/Plugins/
+          Compress-Archive -Path stage/* -DestinationPath "TakeAllLockpicksVR-$version.zip"
+          Compress-Archive -Path contrib/PluginRelease/skse/plugins/TakeAllLockpicksVR.pdb -DestinationPath "TakeAllLockpicksVR-$version-pdb.zip"
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ github.ref_name }}"
+          gh release create $version `
+            "TakeAllLockpicksVR-$version.zip#Mod archive (install with a mod manager)" `
+            "TakeAllLockpicksVR-$version-pdb.zip#Debug symbols (for crash log symbolication)" `
+            --title "Take All Lockpicks VR $version" `
+            --generate-notes

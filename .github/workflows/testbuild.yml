@@ -1,0 +1,63 @@
+name: Test Build
+
+on:
+  push:
+    branches: main
+    paths:
+      - "**.h"
+      - "**.cpp"
+      - "**.yml"
+      - "**/CMakeLists.txt"
+      - "CMakePresets.json"
+      - "vcpkg.json"
+      - "cmake/**"
+  pull_request:
+    branches: main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Keep in sync with the builtin-baseline / default-registry baseline in vcpkg.json
+  VCPKG_COMMIT_ID: c591ac6466a55ef0a05a3d56bb1489ca36e50102
+
+jobs:
+  test-build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset:
+          - debug
+          - release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Get CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+
+      - name: Run CMake
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: build-${{ matrix.preset }}-msvc
+          buildPreset: ${{ matrix.preset }}-msvc
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TakeAllLockpicksVR-${{ matrix.preset }}
+          path: contrib/Plugin*/skse/plugins/
