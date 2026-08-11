@@ -19,8 +19,8 @@ permissions:
   contents: read
 
 env:
-  # Keep in sync with the builtin-baseline / default-registry baseline in vcpkg.json
-  VCPKG_COMMIT_ID: c591ac6466a55ef0a05a3d56bb1489ca36e50102
+  VCPKG_ROOT: C:\vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
 
 jobs:
   test-build:
@@ -33,7 +33,7 @@ jobs:
           - release
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -42,22 +42,28 @@ jobs:
         with:
           arch: x64
 
-      - name: Get CMake
-        uses: lukka/get-cmake@latest
-
       - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}" | Out-Null
+          cd $env:VCPKG_INSTALLATION_ROOT
+          ./bootstrap-vcpkg.bat
+          ./vcpkg --version > "${{ github.workspace }}/vcpkg-version.txt"
 
-      - name: Run CMake
-        uses: lukka/run-cmake@v10
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v6
         with:
-          configurePreset: build-${{ matrix.preset }}-msvc
-          buildPreset: ${{ matrix.preset }}-msvc
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}/*
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'vcpkg-version.txt') }}
+
+      - name: Configure
+        run: cmake --preset build-${{ matrix.preset }}-msvc
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}-msvc
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: TakeAllLockpicksVR-${{ matrix.preset }}
           path: contrib/Plugin*/skse/plugins/
