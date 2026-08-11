@@ -2,12 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "take-all-lockpicks-vr",
   "version-semver": "1.0.0",
-  "dependencies": [
-    "directxtk",
-    "fmt",
-    "rapidcsv",
-    "spdlog"
-  ],
+  "dependencies": ["directxtk", "fmt", "rapidcsv", "spdlog"],
   "license": "MIT",
   "vcpkg-configuration": {
     "default-registry": {
