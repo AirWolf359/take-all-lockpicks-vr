@@ -35,35 +35,8 @@ namespace Hooks
             && a_source && !a_source->IsPlayerRef();
     }
 
-    // Diagnostic: log every RemoveItem call involving a lockpick or a transfer
-    // to the player, so the VR take path can be identified from the log.
-    static void LogRemoveItem(
-        const char*            a_tag,
-        RE::TESObjectREFR*     a_source,
-        RE::TESBoundObject*    a_item,
-        std::int32_t           a_count,
-        RE::ITEM_REMOVE_REASON a_reason,
-        RE::ExtraDataList*     a_extraList,
-        RE::TESObjectREFR*     a_moveToRef) noexcept
-    {
-        const bool lockpick = a_item && a_item->GetFormID() == LOCKPICK_FORM_ID;
-        const bool toPlayer = a_moveToRef && a_moveToRef->IsPlayerRef();
-        if (lockpick || toPlayer) {
-            logger::info(
-                "[{}] RemoveItem: item={:08X} count={} reason={} hasExtraList={} moveTo={:08X} source={:08X}",
-                a_tag,
-                a_item ? a_item->GetFormID() : 0,
-                a_count,
-                std::to_underlying(a_reason),
-                a_extraList != nullptr,
-                a_moveToRef ? a_moveToRef->GetFormID() : 0,
-                a_source ? a_source->GetFormID() : 0);
-        }
-    }
-
     static RE::ObjectRefHandle RemoveItemImpl(
         const REL::Relocation<decltype(&ContainerRemoveItem::Thunk)>& a_func,
-        const char*            a_tag,
         RE::TESObjectREFR*     a_this,
         RE::TESBoundObject*    a_item,
         std::int32_t           a_count,
@@ -73,10 +46,7 @@ namespace Hooks
         const RE::NiPoint3*    a_dropLoc,
         const RE::NiPoint3*    a_rotate) noexcept
     {
-        LogRemoveItem(a_tag, a_this, a_item, a_count, a_reason, a_extraList, a_moveToRef);
-
         if (ShouldTakeAll(a_this, a_item, a_count, a_reason, a_moveToRef)) {
-            logger::info("[{}] Promoting single lockpick take to the whole stack", a_tag);
             return a_func(a_this, a_item, TAKE_ALL_COUNT, a_reason, nullptr, a_moveToRef, a_dropLoc, a_rotate);
         }
         return a_func(a_this, a_item, a_count, a_reason, a_extraList, a_moveToRef, a_dropLoc, a_rotate);
@@ -92,7 +62,7 @@ namespace Hooks
         const RE::NiPoint3*    a_dropLoc,
         const RE::NiPoint3*    a_rotate) noexcept
     {
-        return RemoveItemImpl(func, "Container", a_this, a_item, a_count, a_reason, a_extraList, a_moveToRef, a_dropLoc, a_rotate);
+        return RemoveItemImpl(func, a_this, a_item, a_count, a_reason, a_extraList, a_moveToRef, a_dropLoc, a_rotate);
     }
 
     RE::ObjectRefHandle ActorRemoveItem::Thunk(
@@ -105,7 +75,7 @@ namespace Hooks
         const RE::NiPoint3*    a_dropLoc,
         const RE::NiPoint3*    a_rotate) noexcept
     {
-        return RemoveItemImpl(func, "Actor", a_this, a_item, a_count, a_reason, a_extraList, a_moveToRef, a_dropLoc, a_rotate);
+        return RemoveItemImpl(func, a_this, a_item, a_count, a_reason, a_extraList, a_moveToRef, a_dropLoc, a_rotate);
     }
 
     void Install() noexcept
