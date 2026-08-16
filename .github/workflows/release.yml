@@ -25,10 +25,21 @@ jobs:
         with:
           submodules: recursive
 
+      # Import the VS developer environment (cl, ninja deps, INCLUDE/LIB)
+      # using the runner's vswhere — no third-party action needed.
       - name: Setup MSVC environment
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
+        shell: pwsh
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          & cmd /s /c "`"$vsPath\Common7\Tools\VsDevCmd.bat`" -arch=x64 -host_arch=x64 -no_logo && set" |
+            ForEach-Object {
+              $name, $value = $_ -split '=', 2
+              if ($name -and $value) {
+                Add-Content -Path $env:GITHUB_ENV -Value "$name=$value"
+              }
+            }
 
       - name: Setup vcpkg
         shell: pwsh
